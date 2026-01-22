@@ -1,0 +1,68 @@
+# This file configures Charmcraft.
+# See https://documentation.ubuntu.com/charmcraft/stable/reference/files/charmcraft-yaml-file/
+type: charm
+name: kea-dhcp
+title: Kea DHCP
+summary: A very short one-line summary of the charm.
+description: |
+  A single sentence that says what the charm is, concisely and memorably.
+
+  A paragraph of one to three short sentences, that describe what the charm does.
+
+  A third paragraph that explains what need the charm meets.
+
+  Finally, a paragraph that describes whom the charm is useful for.
+
+# Documentation:
+# https://documentation.ubuntu.com/charmcraft/stable/howto/build-guides/select-platforms/
+platforms:
+  ubuntu-24.04-amd64:
+    build-on: [ubuntu@24.04:amd64]
+    build-for: [ubuntu@24.04:amd64]
+
+parts:
+  charm:
+    plugin: uv
+    source: .
+    build-snaps:
+      - astral-uv
+  files:
+    plugin: dump
+    source: .
+    stage:
+      - LICENSE
+      - templates
+
+# (Optional) Configuration options for the charm
+# This config section defines charm config options, and populates the Configure
+# tab on Charmhub.
+# More information on this section at:
+# https://documentation.ubuntu.com/charmcraft/stable/reference/files/charmcraft-yaml-file/#config
+# General configuration documentation:
+# https://documentation.ubuntu.com/juju/3.6/reference/configuration/#application-configuration
+config:
+  options:
+    interfaces:
+      description: |
+        Comma separated list of interfaces
+      default: ""
+      type: string
+    # An example config option to customise the log level of the workload
+    log-level:
+      description: |
+        Configures the log level of gunicorn.
+
+        Acceptable values are: "info", "debug", "warning", "error" and "critical"
+      default: "info"
+      type: string
+
+requires:
+  database:
+    interface: postgresql_client
+    limit: 1
+
+# Adding this must be followed by "charmcraft fetch-libs", see:
+# https://documentation.ubuntu.com/ops/latest/tutorial/from-zero-to-hero-write-your-first-kubernetes-charm/integrate-your-charm-with-postgresql/
+charm-libs:
+  - lib: data_platform_libs.data_interfaces
+    version: "0"

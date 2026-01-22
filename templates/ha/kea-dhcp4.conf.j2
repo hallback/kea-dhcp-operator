@@ -1,0 +1,120 @@
+{
+    "Dhcp4": {
+        "interfaces-config": {
+            "interfaces": ["eth1"]
+        },
+        "control-socket": {
+            "socket-type": "unix",
+            "socket-name": "/run/kea/kea4-ctrl-socket"
+        },
+        "lease-database": {
+            "type": "memfile",
+            "lfc-interval": 3600
+        },
+
+        // Setup reclamation of the expired leases and leases affinity.
+        // Expired leases will be reclaimed every 10 seconds. Every 25
+        // seconds reclaimed leases, which have expired more than 3600
+        // seconds ago, will be removed. The limits for leases reclamation
+        // are 100 leases or 250 ms for a single cycle. A warning message
+        // will be logged if there are still expired leases in the
+        // database after 5 consecutive reclamation cycles.
+        // If both "flush-reclaimed-timer-wait-time" and "hold-reclaimed-time" are
+        // not 0, when the client sends a release message the lease is expired
+        // instead of being deleted from the lease storage.
+        "expired-leases-processing": {
+            "reclaim-timer-wait-time": 10,
+            "flush-reclaimed-timer-wait-time": 25,
+            "hold-reclaimed-time": 3600,
+            "max-reclaim-leases": 100,
+            "max-reclaim-time": 250,
+            "unwarned-reclaim-cycles": 5
+        },
+
+        // Global timers specified here apply to all subnets, unless there are
+        // subnet specific values defined in particular subnets.
+        //"renew-timer": 900,
+        //"rebind-timer": 1800,
+        //"valid-lifetime": 3600,
+        "renew-timer": 60,
+        "rebind-timer": 120,
+        "valid-lifetime": 180,
+        "max-valid-lifetime": 1200,
+
+        // Global options
+        "option-data": [
+            {
+                "name": "domain-name-servers",
+                "data": "10.62.200.1"
+            },
+            {
+                "name": "domain-search",
+                "data": "lxd"
+            }
+        ],
+
+        "subnet4": [
+            {
+                "id": 1,
+                "subnet": "10.62.200.0/24",
+                "pools": [
+                    {
+                        "pool": "10.62.200.100 - 10.62.200.110"
+                    }
+                ],
+                "option-data": [
+                    {
+                        "name": "routers",
+                        "data": "10.62.200.1"
+                    }
+                ]
+            }
+        ],
+
+        // Logging configuration starts here. Kea uses different loggers to log various
+        // activities. For details (e.g. names of loggers), see Chapter 18.
+        "loggers": [
+            {
+                // This section affects kea-dhcp4, which is the base logger for DHCPv4
+                // component. It tells DHCPv4 server to write all log messages (on
+                // severity INFO or more) to a file.
+                "name": "kea-dhcp4",
+                "output_options": [
+                    {
+                        // Specifies the output file. There are several special values
+                        // supported:
+                        // - stdout (prints on standard output)
+                        // - stderr (prints on standard error)
+                        // - syslog (logs to syslog)
+                        // - syslog:name (logs to syslog using specified name)
+                        // Any other value is considered a name of the file
+                        "output": "/var/log/kea/kea-dhcp4.log",
+ 
+                        // Shorter log pattern suitable for use with systemd,
+                        // avoids redundant information
+                        "pattern": "%-5p %m\n"
+ 
+                        // This governs whether the log output is flushed to disk after
+                        // every write.
+                        // "flush": false,
+ 
+                        // This specifies the maximum size of the file before it is
+                        // rotated.
+                        // "maxsize": 1048576,
+ 
+                        // This specifies the maximum number of rotated files to keep.
+                        // "maxver": 8
+                    }
+                ],
+                // This specifies the severity of log messages to keep. Supported values
+                // are: FATAL, ERROR, WARN, INFO, DEBUG
+                "severity": "INFO",
+ 
+                // If DEBUG level is specified, this value is used. 0 is least verbose,
+                // 99 is most verbose. Be cautious, Kea can generate lots and lots
+                // of logs if told to do so.
+                "debuglevel": 0
+            }
+        ]
+    }
+}
