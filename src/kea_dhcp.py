@@ -11,6 +11,7 @@ import sys
 import subprocess
 
 from charmlibs import apt
+from charms.operator_libs_linux.v1.systemd import service_restart, service_enable, service_running
 from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,21 @@ def start() -> None:
 
 def get_version() -> str | None:
     """Get the running version of the workload."""
-    # You'll need to implement this function (or remove it if not needed).
+    # If we can't get the version, it is assumed the software isn't installed
+    try:
+        cmd = ["kea-admin", "--version"]
+        sp = subprocess.run(cmd, check=True, capture_output=True, encoding="utf-8")
+        logger.info(f"kea_dhcp.get_version()): got version: {sp.stdout}")
+        # Remove trailing newline
+        return sp.stdout.rstrip()
+    except Exception as e:
+        logger.warning(f"kea-admin.get_version()): Failed to get version: {e}")
+        return None
+
     return None
 
+def get_status() -> str:
+    return "This is the default normal status"
 
 def db_init(dbconn) -> int:
     """Initialize the database"""
@@ -83,3 +96,4 @@ def render_and_reload(interfaces, dbconn) -> int:
         file.write(kea_dhcp4_conf)
 
     # reload/restart in some way here
+    service_restart("kea-dhcp4-server")
