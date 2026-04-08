@@ -66,3 +66,5 @@ requires:
 charm-libs:
   - lib: data_platform_libs.data_interfaces
     version: "0"
+  - lib: operator_libs_linux.systemd
+    version: "1"

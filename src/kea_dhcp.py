@@ -7,11 +7,14 @@ The intention is that this module could be used outside the context of a charm.
 """
 
 import logging
+import os
+import grp
+import secrets
 import sys
 import subprocess
 
 from charmlibs import apt
-from charms.operator_libs_linux.v1.systemd import service_restart, service_enable, service_running
+from charms.operator_libs_linux.v1.systemd import service_restart
 from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
@@ -19,12 +22,26 @@ logger = logging.getLogger(__name__)
 
 def install() -> None:
     """Install the workload (by installing a snap, for example)."""
-    # You'll need to implement this function.
     try:
         apt.update()
         apt.add_package(["kea", "postgresql-client-common", "postgresql-client-16"])
     except PackageError as e:
-        logger.error("could not install package. Reason: %s", e.message)
+        logger.error(f"could not install packages. Reason: {e.message}")
+        sys.exit(1)
+
+    # We must create /etc/kea/kea-api-password or kea-ctrl-agent can't start
+    try:
+        keapwfile = "/etc/kea/kea-api-password"
+        keapw = secrets.token_urlsafe(20)
+        keagrp = grp.getgrnam("_kea").gr_gid
+
+        with open(keapwfile, "w", encoding="utf-8") as password_file:
+            password_file.write(f"{keapw}\n")
+
+        os.chmod(keapwfile, 0o640)
+        os.chown(keapwfile, 0, keagrp)
+    except Exception as e:
+        logger.error(f"could not create {keapwfile}. Reason: {e.message}")
         sys.exit(1)
 
 
@@ -47,10 +64,10 @@ def get_version() -> str | None:
         logger.warning(f"kea-admin.get_version()): Failed to get version: {e}")
         return None
 
-    return None
 
 def get_status() -> str:
     return "This is the default normal status"
+
 
 def db_init(dbconn) -> int:
     """Initialize the database"""
@@ -82,9 +99,9 @@ def render_and_reload(interfaces, dbconn) -> int:
     # This should later only reload on actual config change
     env = Environment(loader=FileSystemLoader("templates"),
             keep_trailing_newline=True, trim_blocks=False)
-    kea_dhcp4_conf_tmpl = env.get_template("shared_lease_db/kea-dhcp4.conf.j2")
     
-    # TODO: If we have no postgres relation, we must do something here
+    # TODO: We must check/know here if we're using postgres or ha
+    kea_dhcp4_conf_tmpl = env.get_template("shared_lease_db/kea-dhcp4.conf.j2")   
     kea_dhcp4_conf = kea_dhcp4_conf_tmpl.render(
         interfaces=interfaces,
         dbhost=dbconn["dbhost"],
@@ -95,5 +112,16 @@ def render_and_reload(interfaces, dbconn) -> int:
     with open("/etc/kea/kea-dhcp4.conf", "w") as file:
         file.write(kea_dhcp4_conf)
 
+    # TODO: This is not necessary if we have no stork-agent subordinate
+    # The stork-agent charm could generate the file, but we'd need to add a condition
+    # in the jinja template also.
+    kea_ctrl_agent_conf_tmpl = env.get_template("kea-ctrl-agent.conf.j2")
+    with open("/etc/kea/kea-api-password", encoding="utf-8") as password_file:
+        spw = password_file.read().rstrip("\n")
+    kea_ctrl_agent_conf = kea_ctrl_agent_conf_tmpl.render(storkapipw=spw)
+    with open("/etc/kea/kea-ctrl-agent.conf", "w") as file:
+        file.write(kea_ctrl_agent_conf)
+
     # reload/restart in some way here
     service_restart("kea-dhcp4-server")
+    service_restart("kea-ctrl-agent")

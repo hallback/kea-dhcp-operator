@@ -71,6 +71,17 @@
             }
         ],
 
+        // For a list of available hook libraries, see:
+        // https://gitlab.isc.org/isc-projects/kea/wikis/Hooks-available.
+        "hooks-libraries": [
+            {
+                "library": "/usr/lib/x86_64-linux-gnu/kea/hooks/libdhcp_stat_cmds.so"
+            },
+            {
+                "library": "/usr/lib/x86_64-linux-gnu/kea/hooks/libdhcp_lease_cmds.so"
+            }
+        ],
+
         // Logging configuration starts here. Kea uses different loggers to log various
         // activities. For details (e.g. names of loggers), see Chapter 18.
         "loggers": [
